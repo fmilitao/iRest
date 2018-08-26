@@ -1,7 +1,18 @@
 # iRest
 
 Simple electron application to remind to rest eyes every 20 minutes (i.e. "20-20-20 rule").
+
 Built targeting only macOS, not sure if it will work anywhere else.
+
+Uses NodeJS v9.
+
+## How to Run
+
+```
+git clone https://github.com/fmilitao/iRest
+cd iRest
+npm i && npm start
+```
 
 ## Useful Links
 
