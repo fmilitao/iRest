@@ -1,6 +1,6 @@
 # iRest
 
-Simple electron application to remind to rest eyes every 20 minutes.
+Simple electron application to remind to rest eyes every 20 minutes (i.e. "20-20-20 rule").
 Built targeting only macOS, not sure if it will work anywhere else.
 
 ## Useful Links

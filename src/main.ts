@@ -16,7 +16,7 @@ AAAElFTkSuQmCC`;
 
 const CONFIG = {
   PARAMS: {
-    REPEAT_INTERVAL: moment.duration(10, "seconds"),
+    REPEAT_INTERVAL: moment.duration(20, "minutes"),
     EXERCISE_DURATION: moment.duration(20, "seconds"),
   },
   MESSAGES: {
@@ -24,7 +24,7 @@ const CONFIG = {
     NEXT_REST: (date: moment.Moment) => `Next eye rest: ${date.format("HH:mm:ss")}`,
     REST_INTERVAL: (date: moment.Duration) => `Every ${date}`,
     SKIPPED: "Skipping exercise.",
-    EXERCISE_START: (seconds: number) => `Look away for ${seconds} seconds`,
+    EXERCISE_START: (seconds: number) => `Look at something 20 feet away for ${seconds} seconds.`,
     EXERCISE_DONE: "Exercise done!",
     REST_MESSAGE: "Eye rest period approaching!\n(click notification to skip)",
     QUIT_MESSAGE: "Quit",
@@ -78,9 +78,8 @@ namespace Utils {
           if (error) {
             return reject(error);
           }
-          console.log(response);
           // response === "timeout" when no action was taken
-          // response === "activate" when notification clicked
+          // response === "activate" when notification was clicked
           return resolve(response === "activate");
         });
     });
