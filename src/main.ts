@@ -18,7 +18,8 @@ AAAElFTkSuQmCC`;
 const CONFIG = {
   REST_REPEAT_INTERVAL: moment.duration(10, "seconds"),
   REST_DURATION: moment.duration(20, "seconds"),
-  REST_MESSAGE: "Rest period! Click to skip.",
+  REST_MESSAGE: "Eye rest period! Click to skip.",
+  QUIT_MESSAGE: "Quit",
   TOOL_TIP: "Placeholder tool tip (does this work?)",
 };
 
@@ -26,23 +27,17 @@ namespace Utils {
   const execPromise = util.promisify(exec);
 
   export function say(message: string) {
-    // only works in macOS
+    // 'say' only works in macOS
     return execPromise(`say "${message}"`);
   }
 
-  export function buildTrayMenu(nextRest: moment.Moment) {
-    const restMessage = `Next eye rest: ${nextRest.format("HH:mm:ss")}`;
-
-    const intervalMinutes = CONFIG.REST_REPEAT_INTERVAL.asMinutes();
-    const intervalPrecision = intervalMinutes % 1 === 0 ? 0 : 2;
-    const intervalMessage = `Every ${intervalMinutes} minute(s)`;
-
+  export function buildTrayMenu(restMessage: string, intervalMessage: string) {
     return Menu.buildFromTemplate([
       { label: restMessage, enabled: false },
       { type: "separator" },
       { label: intervalMessage, type: "radio", enabled: false },
       { type: "separator" },
-      { label: "Quit", role: "quit" },
+      { label: CONFIG.QUIT_MESSAGE, role: "quit" },
     ]);
   }
 
@@ -79,14 +74,17 @@ namespace Utils {
 async function reminderStep(tray: Tray) {
   // timeout
   const nextRest = moment().add(CONFIG.REST_REPEAT_INTERVAL);
-  tray.setContextMenu(Utils.buildTrayMenu(nextRest));
-  await Utils.showNotification(`Next at: ${nextRest.format("HH:mm:ss")}`);
+  const restMessage = `Next eye rest: ${nextRest.format("HH:mm:ss")}`;
+  const intervalMessage = `Every ${CONFIG.REST_REPEAT_INTERVAL}`;
+
+  tray.setContextMenu(Utils.buildTrayMenu(restMessage, intervalMessage));
+  await Utils.showNotification(restMessage);
   await Utils.sleep(CONFIG.REST_REPEAT_INTERVAL.asMilliseconds());
 
   // notification
   const clicked = await Utils.showNotification(CONFIG.REST_MESSAGE);
   if (!clicked) {
-    await Utils.say(`Look await for ${CONFIG.REST_DURATION.asSeconds()} seconds`);
+    await Utils.say(`Look away for ${CONFIG.REST_DURATION.asSeconds()} seconds`);
     await Utils.sleep(CONFIG.REST_DURATION.asMilliseconds());
     await Utils.say("Exercise done!");
   } else {
