@@ -1,0 +1,22 @@
+{
+  "name": "iRest",
+  "version": "1.0.0",
+  "description": "Remember to rest your eyes",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "tslint -c tslint.json -p tsconfig.json",
+    "start": "npm run build && electron ./dist/main.js"
+  },
+  "repository": "https://github.com/fmilitao/iRest",
+  "devDependencies": {
+    "@types/node-notifier": "0.0.28",
+    "electron": "^2.0.8",
+    "tslint": "^5.11.0",
+    "typescript": "^3.0.1"
+  },
+  "dependencies": {
+    "moment": "^2.22.2",
+    "node-notifier": "^5.2.1"
+  }
+}
