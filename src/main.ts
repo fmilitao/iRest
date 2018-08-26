@@ -1,7 +1,7 @@
 import { exec } from "child_process";
 import { app, Menu, nativeImage, Tray } from "electron";
 import * as moment from "moment";
-import { notify } from "node-notifier";
+import * as NotificationCenter from "node-notifier/notifiers/notificationcenter";
 import * as util from "util";
 
 // Image from: https://www.iconfinder.com/icons/226587/clock_icon
@@ -14,13 +14,22 @@ b3yP0NEE+6gxVsliBNgJ9GiJzllDyNwwRpGiFsdUssisa7P+E2GZqWGLbiGUdLGqgTeeUzhp
 BO0Z8JKYfUCikCQ8oxY3QRev+XlItK0ckc1mo+0zr26j5T3m5P9p1jid/OF8vJR+0JUhE+AA
 AAAElFTkSuQmCC`;
 
-// TODO: refactor configs
 const CONFIG = {
-  REST_REPEAT_INTERVAL: moment.duration(10, "seconds"),
-  REST_DURATION: moment.duration(20, "seconds"),
-  REST_MESSAGE: "Eye rest period! Click to skip.",
-  QUIT_MESSAGE: "Quit",
-  TOOL_TIP: "Placeholder tool tip (does this work?)",
+  PARAMS: {
+    REPEAT_INTERVAL: moment.duration(10, "seconds"),
+    EXERCISE_DURATION: moment.duration(20, "seconds"),
+  },
+  MESSAGES: {
+    NOTIFICATION_TITLE: "iRest Notification",
+    NEXT_REST: (date: moment.Moment) => `Next eye rest: ${date.format("HH:mm:ss")}`,
+    REST_INTERVAL: (date: moment.Duration) => `Every ${date}`,
+    SKIPPED: "Skipping exercise.",
+    EXERCISE_START: (seconds: number) => `Look away for ${seconds} seconds`,
+    EXERCISE_DONE: "Exercise done!",
+    REST_MESSAGE: "Eye rest period approaching!\n(click notification to skip)",
+    QUIT_MESSAGE: "Quit",
+    TOOL_TIP: "Placeholder tool tip (does this work?)",
+  },
 };
 
 namespace Utils {
@@ -37,7 +46,7 @@ namespace Utils {
       { type: "separator" },
       { label: intervalMessage, type: "radio", enabled: false },
       { type: "separator" },
-      { label: CONFIG.QUIT_MESSAGE, role: "quit" },
+      { label: CONFIG.MESSAGES.QUIT_MESSAGE, role: "quit" },
     ]);
   }
 
@@ -45,7 +54,7 @@ namespace Utils {
     const icon = nativeImage.createFromDataURL(base64Icon);
     const tray = new Tray(icon);
     // TODO: not sure this is working in macOS
-    tray.setToolTip(CONFIG.TOOL_TIP);
+    tray.setToolTip(CONFIG.MESSAGES.TOOL_TIP);
     return tray;
   }
 
@@ -53,11 +62,18 @@ namespace Utils {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  const notificationCenter = new NotificationCenter();
+
   // returns true if notification was clicked, false otherwise
-  export async function showNotification(message: string) {
+  export async function showNotification(message: string, subtitle?: string) {
     return new Promise((resolve, reject) => {
-      notify(
-        { message, wait: true },
+      notificationCenter.notify(
+        {
+          title: CONFIG.MESSAGES.NOTIFICATION_TITLE,
+          subtitle,
+          message,
+          wait: true,
+        },
         async (error, response) => {
           if (error) {
             return reject(error);
@@ -73,22 +89,24 @@ namespace Utils {
 
 async function reminderStep(tray: Tray) {
   // timeout
-  const nextRest = moment().add(CONFIG.REST_REPEAT_INTERVAL);
-  const restMessage = `Next eye rest: ${nextRest.format("HH:mm:ss")}`;
-  const intervalMessage = `Every ${CONFIG.REST_REPEAT_INTERVAL}`;
+  const nextRest = moment().add(CONFIG.PARAMS.REPEAT_INTERVAL);
+  const restMessage = CONFIG.MESSAGES.NEXT_REST(nextRest);
+  const intervalMessage = CONFIG.MESSAGES.REST_INTERVAL(CONFIG.PARAMS.REPEAT_INTERVAL);
 
   tray.setContextMenu(Utils.buildTrayMenu(restMessage, intervalMessage));
-  await Utils.showNotification(restMessage);
-  await Utils.sleep(CONFIG.REST_REPEAT_INTERVAL.asMilliseconds());
+  // don't wait for notification since otherwise we will be off by 5 seconds (which is the
+  // time the notification will take to disappear)
+  Utils.showNotification(restMessage);
+  await Utils.sleep(CONFIG.PARAMS.REPEAT_INTERVAL.asMilliseconds());
 
   // notification
-  const clicked = await Utils.showNotification(CONFIG.REST_MESSAGE);
+  const clicked = await Utils.showNotification(CONFIG.MESSAGES.REST_MESSAGE);
   if (!clicked) {
-    await Utils.say(`Look away for ${CONFIG.REST_DURATION.asSeconds()} seconds`);
-    await Utils.sleep(CONFIG.REST_DURATION.asMilliseconds());
-    await Utils.say("Exercise done!");
+    await Utils.say(CONFIG.MESSAGES.EXERCISE_START(CONFIG.PARAMS.EXERCISE_DURATION.asSeconds()));
+    await Utils.sleep(CONFIG.PARAMS.EXERCISE_DURATION.asMilliseconds());
+    await Utils.say(CONFIG.MESSAGES.EXERCISE_DONE);
   } else {
-    await Utils.say("Skipping exercise.");
+    await Utils.say(CONFIG.MESSAGES.SKIPPED);
   }
 }
 
