@@ -28,6 +28,7 @@ const CONFIG = {
     EXERCISE_DONE: "Exercise done!",
     REST_MESSAGE: "Eye rest period approaching!\n(click notification to skip)",
     QUIT_MESSAGE: "Quit",
+    RESET_MESSAGE: "Reset timer",
     TOOL_TIP: "Placeholder tool tip (does this work?)",
   },
 };
@@ -35,14 +36,23 @@ const CONFIG = {
 namespace Utils {
   const execPromise = util.promisify(exec);
 
-  export function say(message: string) {
     // 'say' only works in macOS
-    return execPromise(`say "${message}"`);
+  export async function say(message: string) {
+    try {
+      return await execPromise(`say "${message}"`);
+    } catch (error) {
+      console.log(`Failed to say: ${message}`, error);
+  }
   }
 
-  export function buildTrayMenu(restMessage: string, intervalMessage: string) {
+  export function buildTrayMenu(
+    restMessage: string,
+    intervalMessage: string,
+    resetFunction: () => void,
+  ) {
     return Menu.buildFromTemplate([
       { label: restMessage, enabled: false },
+      { label: CONFIG.MESSAGES.RESET_MESSAGE, click: resetFunction },
       { type: "separator" },
       { label: intervalMessage, type: "radio", enabled: false },
       { type: "separator" },
@@ -59,7 +69,15 @@ namespace Utils {
   }
 
   export function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    let cancelFunction: () => void;
+    const sleepPromise = new Promise((resolve) => {
+      const timeoutHandler = setTimeout(() => resolve(true), ms);
+      cancelFunction = () => {
+        clearTimeout(timeoutHandler);
+        resolve(false);
+      };
+    });
+    return { sleepPromise, cancelFunction };
   }
 
   const notificationCenter = new NotificationCenter();
@@ -92,17 +110,24 @@ async function reminderStep(tray: Tray) {
   const restMessage = CONFIG.MESSAGES.NEXT_REST(nextRest);
   const intervalMessage = CONFIG.MESSAGES.REST_INTERVAL(CONFIG.PARAMS.REPEAT_INTERVAL);
 
-  tray.setContextMenu(Utils.buildTrayMenu(restMessage, intervalMessage));
   // don't wait for notification since otherwise we will be off by 5 seconds (which is the
   // time the notification will take to disappear)
   Utils.showNotification(restMessage);
-  await Utils.sleep(CONFIG.PARAMS.REPEAT_INTERVAL.asMilliseconds());
+
+  // update menu
+  const { sleepPromise, cancelFunction } = Utils.sleep(CONFIG.PARAMS.REPEAT_INTERVAL.asMilliseconds());
+  tray.setContextMenu(Utils.buildTrayMenu(restMessage, intervalMessage, cancelFunction));
+  const timeoutTriggered = await sleepPromise;
+  // if sleep period was reset then the timeout was not triggered
+  if (!timeoutTriggered) {
+    return;
+  }
 
   // notification
   const clicked = await Utils.showNotification(CONFIG.MESSAGES.REST_MESSAGE);
   if (!clicked) {
     await Utils.say(CONFIG.MESSAGES.EXERCISE_START(CONFIG.PARAMS.EXERCISE_DURATION.asSeconds()));
-    await Utils.sleep(CONFIG.PARAMS.EXERCISE_DURATION.asMilliseconds());
+    await Utils.sleep(CONFIG.PARAMS.EXERCISE_DURATION.asMilliseconds()).sleepPromise;
     await Utils.say(CONFIG.MESSAGES.EXERCISE_DONE);
   } else {
     await Utils.say(CONFIG.MESSAGES.SKIPPED);

@@ -23,3 +23,5 @@ npm i && npm start
 ## Alternatives
 
 If you were looking for more complete applications, see for instance: https://github.com/hovancik/stretchly.
+
+You can also just use Cron and invoke notification from the CLI (https://apple.stackexchange.com/questions/57412/how-can-i-trigger-a-notification-center-notification-from-an-applescript-or-shel).
