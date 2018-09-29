@@ -62,3 +62,5 @@ typings/
 
 # tsc output
 dist
+
+.DS_Store
